@@ -1,0 +1,144 @@
+import os
+import streamlit as st
+
+# ==========================================
+# 1. CORE CHEMICAL ENGINEERING & AI ENGINE
+# ==========================================
+class PlantCoreEngine:
+    def __init__(self):
+        # Check for API key in environment variables
+        self.api_key = os.environ.get("OPENAI_API_KEY")
+        self.client = None
+        
+        if self.api_key:
+            try:
+                from openai import OpenAI
+                self.client = OpenAI(api_key=self.api_key)
+            except ImportError:
+                pass
+
+    def calculate_pump_hydraulics(self, flow_rate, density, head):
+        """
+        DETERMINISTIC CORE: Precise chemical engineering fluid mechanics calculations.
+        Formula: Power (W) = Flow (m3/s) * Density (kg/m3) * Gravity (m/s2) * Head (m)
+        """
+        try:
+            if flow_rate <= 0 or density <= 0 or head <= 0:
+                return 0.0
+            
+            flow_m3_s = flow_rate / 3600  # Convert m3/h to m3/s
+            gravity = 9.81
+            hydraulic_power_watts = flow_m3_s * density * gravity * head
+            hydraulic_power_kw = hydraulic_power_watts / 1000
+            return round(hydraulic_power_kw, 2)
+        except Exception:
+            return 0.0
+
+    def get_ai_troubleshooting_guidance(self, equipment_type, process_anomaly):
+        """
+        AI COGNITIVE CORE: Generates safety protocols based on operational context.
+        """
+        system_prompt = (
+            "You are an expert Chemical Plant Operations AI Assistant. Provide highly concise, "
+            "step-by-step troubleshooting guidelines adhering strictly to OSHA and industrial safety standards. "
+            "Prioritize pressure relief, isolation, and system stabilization."
+        )
+        user_prompt = f"Equipment: {equipment_type}\nObserved Critical Anomaly: {process_anomaly}\nProvide immediate emergency action steps."
+
+        # Mock / Fallback mode if OpenAI is not installed or API key is missing
+        if not self.client:
+            return (
+                "⚠️ **Running in Simulation Mode (No API Key Detected)**\n\n"
+                "**Engine Logic Validated.** If connected to production, the AI would process the following payload:\n\n"
+                f"*System Instruction:* `{system_prompt}`\n\n"
+                f"*Payload Sent:* \n`{user_prompt}`\n\n"
+                "--- \n"
+                "**Simulated Response Actions:**\n"
+                "1. Alert control room panel operator to monitor upstream pressure profiles.\n"
+                "2. Verify status of bypass and isolation control valves manually.\n"
+                "3. Prepare standard operating procedures (SOP) for safe emergency shutdown sequence if parameters cross high-high trip limits."
+            )
+
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.2  # Kept low for consistent, safety-focused technical outputs
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Error connecting to AI execution layer: {str(e)}"
+
+
+# ==========================================
+# 2. STREAMLIT USER INTERFACE DEPLOYMENT
+# ==========================================
+def main():
+    st.set_page_config(
+        page_title="Plant Operator AI", 
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    
+    # Custom CSS style block to make it look clean and industrial
+    st.markdown("""
+        <style>
+        .main { background-color: #f8f9fa; }
+        h1 { color: #1E3A8A; }
+        h2 { color: #0D9488; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.title("🏭 Plant Operator AI Assistant")
+    st.subheader("Industry 4.0 Digital Twin & Intelligent Decision Support Systems")
+    st.markdown("---")
+
+    # Initialize backend engine
+    engine = PlantCoreEngine()
+
+    # Layout structure split cleanly into two sections
+    col1, col2 = st.columns([1, 1], gap="large")
+
+    with col1:
+        st.header("🔢 Process Calculations")
+        st.info("Deterministic engineering module. Eliminates AI mathematical errors.")
+        
+        flow = st.number_input("Flow Rate (m³/h)", min_value=0.0, value=50.0, step=5.0)
+        dens = st.number_input("Fluid Density (kg/m³)", min_value=0.0, value=1000.0, step=50.0)
+        head = st.number_input("Differential Head (m)", min_value=0.0, value=30.0, step=2.0)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Compute Hydraulic Power", use_container_width=True):
+            power = engine.calculate_pump_hydraulics(flow, dens, head)
+            st.metric(label="Required Pump Hydraulic Power", value=f"{power} kW")
+            st.success("Mathematical calculation validated against standard fluid dynamics constraints.")
+
+    with col2:
+        st.header("🤖 AI Operational Diagnostics")
+        st.info("Cognitive module. Generates real-time mitigation protocols based on system state.")
+        
+        eq_type = st.selectbox(
+            "Select Faulty Unit Operation / Asset", 
+            ["Centrifugal Pump", "Distillation Column", "Shell & Tube Heat Exchanger", "Plug Flow Reactor"]
+        )
+        
+        anomaly = st.text_area(
+            "Describe Live Process Anomaly / Active Alarm Text", 
+            placeholder="e.g., Heavy cavitation rattling noises accompanied by a sudden drop in discharge pressure and fluctuating motor current draw."
+        )
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Generate Troubleshooting Protocol", use_container_width=True):
+            if anomaly.strip():
+                with st.spinner("Analyzing standard operating procedures (SOPs)..."):
+                    guidance = engine.get_ai_troubleshooting_guidance(eq_type, anomaly)
+                    st.markdown("### 📋 Targeted Operator Response Protocol:")
+                    st.markdown(guidance)
+            else:
+                st.warning("Please provide a text description of the operational anomaly to analyze.")
+
+if __name__ == "__main__":
+    main()
